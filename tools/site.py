@@ -45,6 +45,7 @@ ul.rules{list-style:none;padding:0} ul.rules li{padding:8px 0;border-bottom:1px 
 .cta{display:inline-block;background:var(--indigo);color:#fff;padding:10px 16px;text-decoration:none;font-weight:600;margin-right:10px} .cta.alt{background:#fff;color:var(--ink);border:1px solid var(--ink)}
 footer{margin-top:48px;padding:16px 24px;border-top:3px solid var(--ink);font-size:14px;color:var(--muted)}
 .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin:24px 0} .grid3 div{border-top:4px solid var(--indigo);padding-top:10px} .grid3 b{display:block;margin-bottom:4px}
+form.check{border:1px solid var(--ink);padding:16px 18px;margin:8px 0 20px} form.check label{display:block;font-weight:600;margin-bottom:6px} .row{display:flex;gap:10px;flex-wrap:wrap} .row input{flex:1;min-width:240px;font:inherit;padding:9px 12px;border:1px solid var(--ink)} .row .cta{margin:0;border:0;font:inherit;cursor:pointer} .small{font-size:13px;color:var(--muted);margin:10px 0 0}
 .ladder{list-style:none;padding:0;margin:16px 0;border:1px solid var(--ink)} .ladder li{padding:10px 14px;border-bottom:1px solid var(--rule)} .ladder li:last-child{border-bottom:0} .ladder b{display:inline-block;min-width:9em}
 """
 
@@ -100,7 +101,12 @@ omtal audit https://your-product.example</pre><p>The report names this rule as <
     ladder = "".join(f"<li><b>{e(k)}</b> {e(v)}</li>" for k, v in (("unreachable", "the machines that answer questions cannot read the site"), ("reachable", "they can read it, but what the product is has to be guessed"), ("understood", "the product is declared in a form machines read"), ("cited", "engines use the site as a source when answering"), ("recommended", "engines name the product for the questions it answers")))
     landing = f"""<h1>Seen by the machines that answer.</h1>
 <p class=lead>Omtal reads your site the way a crawler does, derives the questions your product answers, asks the engines, and says on every finding what was found, why it matters and how it knows.</p>
-<p><a class=cta href="sample-report.html">See a sample report</a> <a class="cta alt" href="https://github.com/petresandu-cloud/omtal">Install from GitHub</a></p>
+<form class=check action="https://editerra.se/cgi-bin/omtal-check.py" method="get">
+<label for=url>Your site's address</label>
+<div class=row><input id=url name=url type=url inputmode=url placeholder="https://your-product.example" required autocomplete=url><button type=submit class=cta>Check it</button></div>
+<p class=small>Reads up to 12 pages, takes under a minute, and gives you the same report the command line writes. Nothing is stored but the report, which is kept for an hour at a link you can share. No engine is asked here; for that, run Omtal with your own key.</p>
+</form>
+<p><a class="cta alt" href="sample-report.html">See a sample report</a> <a class="cta alt" href="https://github.com/petresandu-cloud/omtal">Install from GitHub</a></p>
 <pre>pip install git+https://github.com/petresandu-cloud/omtal
 omtal audit https://your-product.example      # writes omtal-out/&lt;host&gt;/report.html</pre>
 <h2>The ladder</h2><ul class=ladder>{ladder}</ul>
