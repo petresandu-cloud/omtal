@@ -1,0 +1,61 @@
+# Layer: content and evidence. Does a page answer the questions the product could answer, and do the claims stand up?
+
+[[rule]]
+id = "content.capabilities-have-pages"
+layer = "content"
+title = "Each declared capability is described on a page of its own or in a section with a heading"
+consumes = ["product.graph", "site.pages"]
+kind = "mechanical"
+check = "capabilities_have_pages"
+severity = "risk"
+why = "An answer engine cites a page that answers the question. A capability that exists only in a feature list has no page to cite."
+
+[[rule]]
+id = "content.enough-text"
+layer = "content"
+title = "The crawled pages carry enough text to be understood"
+consumes = ["site.pages"]
+kind = "mechanical"
+check = "enough_text"
+severity = "risk"
+why = "A page of a hundred words and an image is a label, not evidence. Engines cite pages that explain."
+
+[[rule]]
+id = "content.images-described"
+layer = "content"
+title = "Images carry alt text"
+consumes = ["site.pages"]
+kind = "mechanical"
+check = "images_described"
+severity = "note"
+why = "What an image shows is invisible to a text crawler unless the alt text says it."
+
+[[rule]]
+id = "evidence.claims-sourced"
+layer = "evidence"
+title = "Claims with numbers are backed by a source or a method"
+consumes = ["product.graph"]
+kind = "judgement"
+question = "For each claim with a number on the site (the list is in the product graph), is there a source, a method or a link that substantiates it on the same page? Name the claim and where the evidence is, or say it is unsupported."
+severity = "risk"
+why = "Engines increasingly weigh evidence: a number with a source is citable, a number alone is marketing."
+
+[[rule]]
+id = "evidence.positioning-accurate"
+layer = "evidence"
+title = "The site's description of the product matches what the product does"
+consumes = ["product.graph"]
+kind = "judgement"
+question = "Read the home page's title, description and first heading against the capabilities the site lists. Does the description name what the product actually does, in words a user would search for, or does it describe a category or a feeling? Quote the description and say what is missing."
+severity = "risk"
+why = "An engine can only understand what the words say. Positioning that describes the feeling and not the function is the single most common reason a relevant product is not surfaced."
+
+[[rule]]
+id = "evidence.audience-stated"
+layer = "evidence"
+title = "The site says who the product is for"
+consumes = ["product.graph"]
+kind = "mechanical"
+check = "audience_stated"
+severity = "note"
+why = "Recommendation questions carry a who: 'for a small team', 'for my parents'. A site that never says who it is for is not matched to them."

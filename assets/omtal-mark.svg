@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Omtal mark">
+  <title>Omtal</title>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#3A2E7A"/>
+  <!-- the eye: to be seen, understood, mentioned -->
+  <path d="M13 32 Q32 12 51 32 Q32 52 13 32 Z" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="32" cy="32" r="7" fill="#9BE7C4"/>
+</svg>

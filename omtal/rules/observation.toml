@@ -1,0 +1,41 @@
+# Layer: observation. What the engines actually did with the intents, from stored observations only.
+
+[[rule]]
+id = "observation.mentioned"
+layer = "observation"
+title = "AI answers mention the product for its intents"
+consumes = ["observations.summary"]
+kind = "mechanical"
+check = "observed_mentioned"
+severity = "risk"
+why = "The first thing the loop measures. Fractions from repeated runs, per engine; never a single answer."
+
+[[rule]]
+id = "observation.cited"
+layer = "observation"
+title = "AI answers cite the site as a source"
+consumes = ["observations.summary"]
+kind = "mechanical"
+check = "observed_cited"
+severity = "risk"
+why = "A citation is the site being used as evidence, which is what content changes are meant to earn."
+
+[[rule]]
+id = "observation.recommended"
+layer = "observation"
+title = "AI answers recommend the product where it fits"
+consumes = ["observations.summary"]
+kind = "mechanical"
+check = "observed_recommended"
+severity = "note"
+why = "The outcome that matters commercially. Recommendation and mention are different phenomena and are counted apart."
+
+[[rule]]
+id = "observation.source-graph"
+layer = "observation"
+title = "The sources the engines rely on for these intents are known"
+consumes = ["observations.summary"]
+kind = "mechanical"
+check = "observed_sources"
+severity = "note"
+why = "Which domains the answers cite is the evidence ecosystem to be present in; it decides what to write and where to be referenced."

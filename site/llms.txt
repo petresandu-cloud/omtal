@@ -1,0 +1,36 @@
+# Omtal
+
+> Omtal checks whether AI systems can find, understand, cite and recommend a product. It reads the site the way a crawler does, derives the questions the product answers, asks the engines with the operator's key, stores every answer and counts. Open source (AGPL-3.0-or-later) by Editerra AB, Sweden. Command: `omtal audit <url>`.
+
+- [Every rule](https://editerra.se/omtal/rules/index.html)
+- [Sample report](https://editerra.se/omtal/sample-report.html)
+- [Source](https://github.com/petresandu-cloud/omtal)
+- [Sibling product, Okkok](https://editerra.se/okkok/llms.txt)
+- [Editerra AB](https://www.editerra.se/llms.txt)
+
+## Rules
+
+- [The home page answers with HTML over HTTPS](https://editerra.se/omtal/rules/access.home-answers.html): Keeps machines out, Reach.
+- [robots.txt admits the search and AI answer crawlers](https://editerra.se/omtal/rules/access.robots-admits-ai-crawlers.html): Keeps machines out, Reach.
+- [A robots.txt exists and names the sitemap](https://editerra.se/omtal/rules/access.robots-present.html): Weakens understanding, Reach.
+- [A sitemap lists the pages](https://editerra.se/omtal/rules/access.sitemap.html): Weakens understanding, Reach.
+- [An llms.txt summarises the site for language models](https://editerra.se/omtal/rules/access.llms-txt.html): Worth knowing, Reach.
+- [The crawl reaches the pages the sitemap promises](https://editerra.se/omtal/rules/access.pages-crawlable.html): Weakens understanding, Reach.
+- [Each declared capability is described on a page of its own or in a section with a heading](https://editerra.se/omtal/rules/content.capabilities-have-pages.html): Weakens understanding, Content.
+- [The crawled pages carry enough text to be understood](https://editerra.se/omtal/rules/content.enough-text.html): Weakens understanding, Content.
+- [Images carry alt text](https://editerra.se/omtal/rules/content.images-described.html): Worth knowing, Content.
+- [Claims with numbers are backed by a source or a method](https://editerra.se/omtal/rules/evidence.claims-sourced.html): Weakens understanding, Evidence.
+- [The site's description of the product matches what the product does](https://editerra.se/omtal/rules/evidence.positioning-accurate.html): Weakens understanding, Evidence.
+- [The site says who the product is for](https://editerra.se/omtal/rules/evidence.audience-stated.html): Worth knowing, Evidence.
+- [The maker is declared in structured data](https://editerra.se/omtal/rules/entity.organization-declared.html): Weakens understanding, Understanding.
+- [The product is declared in structured data with a description](https://editerra.se/omtal/rules/entity.product-declared.html): Keeps machines out, Understanding.
+- [The product's name appears in every page's title or description](https://editerra.se/omtal/rules/entity.name-consistent.html): Weakens understanding, Understanding.
+- [Every crawled page carries a canonical address](https://editerra.se/omtal/rules/entity.canonical-everywhere.html): Weakens understanding, Understanding.
+- [Every crawled page has a title and a description of useful length](https://editerra.se/omtal/rules/entity.title-and-description.html): Weakens understanding, Understanding.
+- [Every crawled page has exactly one h1](https://editerra.se/omtal/rules/entity.one-h1.html): Worth knowing, Understanding.
+- [Every crawled page declares its language](https://editerra.se/omtal/rules/entity.language.html): Worth knowing, Understanding.
+- [The maker links its other identities (sameAs)](https://editerra.se/omtal/rules/entity.same-as.html): Worth knowing, Understanding.
+- [AI answers mention the product for its intents](https://editerra.se/omtal/rules/observation.mentioned.html): Weakens understanding, What the engines do.
+- [AI answers cite the site as a source](https://editerra.se/omtal/rules/observation.cited.html): Weakens understanding, What the engines do.
+- [AI answers recommend the product where it fits](https://editerra.se/omtal/rules/observation.recommended.html): Worth knowing, What the engines do.
+- [The sources the engines rely on for these intents are known](https://editerra.se/omtal/rules/observation.source-graph.html): Worth knowing, What the engines do.

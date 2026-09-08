@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omtal"
+version = "0.1.0"
+description = "Omtal: can AI systems find, understand, cite and recommend your product, and how do we know? Reads the site the way a crawler does."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE", "COMMERCIAL-LICENSE.md"]
+authors = [{name = "Editerra AB"}]
+keywords = ["ai-search", "discoverability", "geo", "llms-txt", "structured-data", "seo", "audit"]
+classifiers = ["Development Status :: 3 - Alpha", "Environment :: Console", "Intended Audience :: Developers", "Operating System :: OS Independent",
+               "Programming Language :: Python :: 3", "Topic :: Internet :: WWW/HTTP :: Site Management"]
+dependencies = []
+
+[project.urls]
+Homepage = "https://editerra.se/omtal/"
+Source = "https://github.com/petresandu-cloud/omtal"
+Issues = "https://github.com/petresandu-cloud/omtal/issues"
+
+[project.scripts]
+omtal = "omtal.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["omtal*"]
+
+[tool.setuptools.package-data]
+omtal = ["rules/*.toml"]

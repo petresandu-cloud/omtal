@@ -1,0 +1,81 @@
+# Layer: entity. Does the site state, in machine-readable form, what the product is and who makes it?
+
+[[rule]]
+id = "entity.organization-declared"
+layer = "entity"
+title = "The maker is declared in structured data"
+consumes = ["product.graph"]
+kind = "mechanical"
+check = "organization_declared"
+severity = "risk"
+why = "Engines build an entity from Organization data: name, address, identifier, sameAs links. Without it the maker is a string on a page, not an entity."
+
+[[rule]]
+id = "entity.product-declared"
+layer = "entity"
+title = "The product is declared in structured data with a description"
+consumes = ["product.graph"]
+kind = "mechanical"
+check = "product_declared"
+severity = "fail"
+why = "A Product, SoftwareApplication, MobileApplication or Service node with a name and a description is the one statement an engine can quote about what the thing is. A home page without it is understood by guesswork."
+
+[[rule]]
+id = "entity.name-consistent"
+layer = "entity"
+title = "The product's name appears in every page's title or description"
+consumes = ["product.graph"]
+kind = "mechanical"
+check = "name_consistent"
+severity = "risk"
+why = "Entity resolution works on repetition: the same name, spelled the same way, across the pages that describe it."
+
+[[rule]]
+id = "entity.canonical-everywhere"
+layer = "entity"
+title = "Every crawled page carries a canonical address"
+consumes = ["site.pages"]
+kind = "mechanical"
+check = "canonical_everywhere"
+severity = "risk"
+why = "Without a canonical, www and non-www, trailing slashes and query strings split one page into several, and an engine's confidence with it."
+
+[[rule]]
+id = "entity.title-and-description"
+layer = "entity"
+title = "Every crawled page has a title and a description of useful length"
+consumes = ["site.pages"]
+kind = "mechanical"
+check = "titles_descriptions"
+severity = "risk"
+why = "The title and the description are the two strings every engine reads first and most answer engines quote. Missing, duplicated or one-word, they leave the page unlabelled."
+
+[[rule]]
+id = "entity.one-h1"
+layer = "entity"
+title = "Every crawled page has exactly one h1"
+consumes = ["site.pages"]
+kind = "mechanical"
+check = "one_h1"
+severity = "note"
+why = "One top heading per page tells a parser what the page is about; none or several dilute it."
+
+[[rule]]
+id = "entity.language"
+layer = "entity"
+title = "Every crawled page declares its language"
+consumes = ["site.pages"]
+kind = "mechanical"
+check = "language_declared"
+severity = "note"
+why = "Engines route questions by language; a page without a lang attribute is guessed."
+
+[[rule]]
+id = "entity.same-as"
+layer = "entity"
+title = "The maker links its other identities (sameAs)"
+consumes = ["product.graph"]
+kind = "mechanical"
+check = "same_as"
+severity = "note"
+why = "sameAs links to the app stores, GitHub, LinkedIn or Wikidata let an engine merge the site's entity with what it already knows from elsewhere."

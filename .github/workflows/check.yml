@@ -1,0 +1,14 @@
+# Manual trigger only: hosted runs are started by a person.
+name: check
+on:
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m omtal self-test
+      - run: python3 -m unittest -v

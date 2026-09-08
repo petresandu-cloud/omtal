@@ -1,0 +1,62 @@
+# Layer: access. Can the machines that answer questions reach the site at all?
+# Each rule names the fact it consumes and the check function that decides it.
+
+[[rule]]
+id = "access.home-answers"
+layer = "access"
+title = "The home page answers with HTML over HTTPS"
+consumes = ["site.home"]
+kind = "mechanical"
+check = "home_answers"
+severity = "fail"
+why = "An engine that cannot fetch the front page cannot know the product exists. HTTPS is a ranking and trust signal on every engine."
+
+[[rule]]
+id = "access.robots-admits-ai-crawlers"
+layer = "access"
+title = "robots.txt admits the search and AI answer crawlers"
+consumes = ["site.robots"]
+kind = "mechanical"
+check = "robots_admits"
+severity = "fail"
+why = "OpenAI states that sites must allow OAI-SearchBot to appear in ChatGPT search; Perplexity and Bing document their bots the same way. A Disallow: / for one of them is invisibility on that engine."
+
+[[rule]]
+id = "access.robots-present"
+layer = "access"
+title = "A robots.txt exists and names the sitemap"
+consumes = ["site.robots"]
+kind = "mechanical"
+check = "robots_present"
+severity = "risk"
+why = "Absence is read as permission by most crawlers, but an explicit policy with a sitemap line is what OpenAI, Google and Bing ask for, and it is where a crawler finds the map."
+
+[[rule]]
+id = "access.sitemap"
+layer = "access"
+title = "A sitemap lists the pages"
+consumes = ["site.sitemap"]
+kind = "mechanical"
+check = "sitemap_present"
+severity = "risk"
+why = "A sitemap is how a crawler learns about pages no link leads to yet, and how Bing and Google are told what changed."
+
+[[rule]]
+id = "access.llms-txt"
+layer = "access"
+title = "An llms.txt summarises the site for language models"
+consumes = ["site.llms"]
+kind = "mechanical"
+check = "llms_present"
+severity = "note"
+why = "A convention rather than a standard: a plain-text summary at /llms.txt that several answer engines and agents read first. Cheap, and it is the one page written for the reader that matters here."
+
+[[rule]]
+id = "access.pages-crawlable"
+layer = "access"
+title = "The crawl reaches the pages the sitemap promises"
+consumes = ["site.pages", "site.sitemap"]
+kind = "mechanical"
+check = "pages_crawlable"
+severity = "risk"
+why = "A sitemap that names pages returning errors, or pages blocked by a robots meta tag, tells an engine the map cannot be trusted."
