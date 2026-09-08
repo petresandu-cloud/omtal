@@ -60,7 +60,7 @@ def page(title, body, path="", depth=0, description="", ld=None):
 <link rel="canonical" href="{e(canonical)}"><meta property="og:site_name" content="Omtal"><meta property="og:type" content="website"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(description or title)}"><meta property="og:url" content="{e(canonical)}"><meta property="og:image" content="{SITE}/assets/omtal-social-preview.png">
 <script type="application/ld+json">{json.dumps(graph, ensure_ascii=False)}</script><style>{CSS}</style></head><body>
 <header class="top"><a href="{up}index.html" style="display:flex;align-items:center;gap:12px">{MARK}<span class="word">omtal</span></a>
-<nav><a href="{up}rules/index.html">Rules</a><a href="{up}sample-report.html">Sample report</a><a href="https://editerra.se/okkok/">Okkok</a><a href="https://github.com/petresandu-cloud/omtal">GitHub</a></nav></header>
+<nav><a href="{up}rules/index.html">Rules</a><a href="{up}sample-report.html">Sample report</a><a href="https://github.com/petresandu-cloud/omtal">GitHub</a></nav></header>
 <div class="wrap">{body}</div>
 <footer>Omtal is open source under the AGPL-3.0-or-later and a trademark of Editerra AB, Org.nr 559441-6454, Sweden. <a href="https://github.com/petresandu-cloud/omtal/blob/main/COMMERCIAL-LICENSE.md">Commercial terms</a> · <a href="mailto:contact@editerra.se">contact@editerra.se</a></footer></body></html>"""
 
