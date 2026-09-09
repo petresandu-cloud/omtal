@@ -56,6 +56,24 @@ came from the pompedozare.ro audit on 2026-09-09.
    audit a local build on http://localhost and neither the TLS rule nor the
    sitemap rule fires a false signal.
 
+## Follow-on: hosted front door made private (2026-09-09)
+
+The hosted check (tools/check.cgi.py) used to write every report to a public
+folder named after the checked site and redirect to it, so reports were
+world-readable, guessable, and browsable, and a repeat check of the same site
+served the cached public file to anyone. It also dead-ended: the report page had
+no way to check another site or re-run. Fixed, on the owner's decision "private,
+shown inline":
+- the report is returned in the response to the visitor who asked; nothing is
+  written to a public folder;
+- a private cache under CACHE keeps a repeat check of the same public site fast;
+- a controls bar wraps the report with a "Check another site" form and a
+  "Run this one again" link (fresh=1 skips the cache);
+- the report body is still exactly what `omtal` renders, so the fingerprint
+  integrity check is untouched.
+Smoke-tested locally against a public site: 200 inline, cache hit, fresh bypass,
+report stored only under the private cache. Not yet deployed to the web host.
+
 ## Not building (imagined, not demanded)
 A full origin-versus-edge diff that fetches the true origin behind the CDN. It
 needs an origin address or a host trick, and no failure this session demanded it.
