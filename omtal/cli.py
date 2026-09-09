@@ -44,8 +44,9 @@ def norm_url(u: str) -> str:
 def cmd_audit(a) -> int:
     url = norm_url(a.url)
     out = out_dir_for(url, a.out)
-    print(f"Reading {url} the way a crawler does")
-    probes = site.probe(url)
+    pre_deploy = getattr(a, "pre_deploy", False)
+    print(f"Reading {url} the way a crawler does" + (" (pre-deploy: a local build, HTTPS not required, sitemap followed against this host)" if pre_deploy else ""))
+    probes = site.probe(url, pre_deploy=pre_deploy)
     sm = next((p["value"] for p in probes if p["id"] == "site.sitemap"), None) or {}
     probes += pages.probe(url, sm.get("pages"), budget=a.budget)
     pg = next(p["value"] for p in probes if p["id"] == "site.pages")
@@ -179,6 +180,8 @@ def main(argv=None) -> int:
         if name == "audit":
             p.add_argument("--budget", type=int, default=pages.DEFAULT_BUDGET, help="pages to crawl at most")
             p.add_argument("--competitor", action="append", help="a name to look for in answers; repeatable")
+            p.add_argument("--pre-deploy", action="store_true", dest="pre_deploy",
+                           help="audit a local build before it ships: HTTPS is not required, and sitemap/Sitemap-line URLs on the production host are followed against this host")
         if name == "observe":
             p.add_argument("--engines", nargs="*", default=None, choices=list(observe.ENGINES))
             p.add_argument("--runs", type=int, default=1, help="times each question is asked per engine")

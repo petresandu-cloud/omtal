@@ -52,6 +52,26 @@ severity = "note"
 why = "A convention rather than a standard: a plain-text summary at /llms.txt that several answer engines and agents read first. Cheap, and it is the one page written for the reader that matters here."
 
 [[rule]]
+id = "access.cdn-delivery"
+layer = "access"
+title = "No CDN in front rewrites the page into something worse for engines"
+consumes = ["site.home", "site.pages"]
+kind = "mechanical"
+check = "cdn_delivery"
+severity = "note"
+why = "A CDN like Cloudflare serves the crawler its own edited copy of each page, not the server's. Most edits are harmless, but some — email-address obfuscation that turns a plain address into a dead /cdn-cgi/ link, managed robots.txt, script rewriting — change what an engine reads. Naming the edge, and the rewrites it made, tells the owner what is theirs to fix in code and what is a dashboard setting."
+
+[[rule]]
+id = "access.robots-one-group-per-bot"
+layer = "access"
+title = "robots.txt names each crawler in a single group"
+consumes = ["site.robots"]
+kind = "mechanical"
+check = "robots_one_group_per_bot"
+severity = "note"
+why = "The robots.txt standard says a crawler obeys only the first group whose user-agent matches, and does not merge later groups for the same agent. When a CDN prepends its own 'User-agent: *' block ahead of the site's, a strict crawler reads the CDN's group and silently ignores the site's Disallow lines. Lenient crawlers merge and are fine; the split is the trap worth naming."
+
+[[rule]]
 id = "access.pages-crawlable"
 layer = "access"
 title = "The crawl reaches the pages the sitemap promises"

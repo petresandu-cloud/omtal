@@ -23,6 +23,8 @@ def _ok_link(u: str, base: str) -> bool:
     if not u.startswith(base):
         return False
     path = urllib.parse.urlsplit(u).path.lower()
+    if path.startswith("/cdn-cgi/"):  # CDN infrastructure, not a page of the site
+        return False
     return not path.endswith(SKIP_EXT)
 
 
@@ -58,3 +60,4 @@ def probe(url: str, sitemap_pages: list[str] | None = None, budget: int = DEFAUL
 
 def self_test() -> None:
     assert _ok_link("https://x/a/b.html", "https://x") and not _ok_link("https://x/a.png", "https://x") and not _ok_link("https://y/", "https://x")
+    assert not _ok_link("https://x/cdn-cgi/l/email-protection", "https://x")

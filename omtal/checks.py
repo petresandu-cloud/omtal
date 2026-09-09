@@ -39,16 +39,22 @@ def home_answers(f: Facts):
     if m := f.missing("site.home"):
         return ("FAIL", f"the home page could not be fetched: {m[1]}", "verified-directly")
     h = f.val("site.home")
+    pre_deploy = h.get("pre_deploy")
     problems = []
     if h["status"] != 200:
         problems.append(f"HTTP {h['status']}")
     if "html" not in (h["content_type"] or ""):
         problems.append(f"content type {h['content_type'] or 'unknown'}, not HTML")
+    https_note = ""
     if not h["https"]:
-        problems.append("served over plain HTTP")
+        if pre_deploy:  # a local build has no TLS; the live host does, so this is not the build's failing
+            https_note = "; HTTPS not applicable to this pre-deploy build (the live host serves HTTPS)"
+        else:
+            problems.append("served over plain HTTP")
     if problems:
         return ("FAIL", "; ".join(problems), "verified-directly")
-    return ("PASS", f"{h['final_url']} answers 200 as HTML over HTTPS" + (" after a redirect" if h["redirected"] else ""), "verified-directly")
+    how = "as HTML over HTTPS" if h["https"] else "as HTML"
+    return ("PASS", f"{h['final_url']} answers 200 {how}" + (" after a redirect" if h["redirected"] else "") + https_note, "verified-directly")
 
 
 def robots_admits(f: Facts):
@@ -116,6 +122,45 @@ def pages_crawlable(f: Facts):
     if problems:
         return ("RISK", f"{p['crawled']} pages read; " + "; ".join(problems), "verified-directly")
     return ("PASS", f"{p['crawled']} pages read without error" + (f"; {p['queued_unvisited']} more were linked but beyond the crawl budget" if p["queued_unvisited"] else ""), "verified-directly")
+
+
+def cdn_delivery(f: Facts):
+    if m := f.missing("site.home"):
+        return m
+    h = f.val("site.home")
+    cdn = h.get("cdn")
+    pages = _pages(f)
+    arts = web.cdn_artifacts(pages)
+    if not cdn and not arts:
+        return ("PASS", "no CDN or edge rewriting detected in front of the origin; the crawler reads what the server sends", "verified-directly")
+    lead = f"{cdn} sits in front of the origin, so a crawler reads the edge's version of each page, not the server's" if cdn else "an edge rewrites some pages between the server and the crawler"
+    if not arts:
+        return ("PASS", lead + "; no rewrites were found that hurt discoverability", "verified-directly")
+    detail = "; ".join(f"{a['detail']} Fix: {a['fix']} (seen on {a['where']})" for a in arts)
+    return ("NOTE", lead + ". Recognised edge rewrite: " + detail, "verified-directly")
+
+
+def robots_one_group_per_bot(f: Facts):
+    if m := f.missing("site.robots"):
+        return m
+    r = f.val("site.robots")
+    if not r["present"]:
+        return ("PASS", "no robots.txt, so there are no groups to conflict", "verified-directly")
+    counts = r.get("ua_group_counts") or {}
+    watch = {"*"} | {b.lower() for b in web.BOTS}
+    dup = sorted(ua for ua, n in counts.items() if n >= 2 and ua in watch)
+    if not dup:
+        return ("PASS", "each user-agent is named by at most one group; every crawler reads a single set of rules", "verified-directly")
+    raw = r.get("raw_groups") or []
+    parts = []
+    for ua in dup:
+        naming = [g for g in raw if ua in g.get("uas", [])]
+        missed = [f"{k} {v}" for g in naming[1:] for k, v in g.get("rules", []) if k == "disallow"]
+        seg = f"'{ua}' is named by {counts[ua]} separate groups"
+        if missed:
+            seg += "; a crawler that honours only the first would ignore: " + ", ".join(dict.fromkeys(missed))
+        parts.append(seg)
+    return ("NOTE", "robots.txt repeats a user-agent across groups (often a CDN prepending its own block). Lenient crawlers merge them; a strict one applies only the first matching group. " + "; ".join(parts), "verified-directly")
 
 
 # ----------------------------------------------------------------- entity
@@ -354,3 +399,21 @@ def self_test() -> None:
     assert observed_mentioned(f)[0] == "UNKNOWN" and observed_mentioned(f)[2] == "needs-engine-access"
     f = Facts([{"id": "observations.summary", "value": {"e": {"asked": 3, "failed": 0, "mentioned": 0, "cited": 0, "recommended": 0, "domains": [], "competitors": []}}, "provenance": "verified-directly"}])
     assert observed_mentioned(f)[0] == "RISK"
+    f = Facts([{"id": "site.home", "value": {"cdn": None}, "provenance": "verified-directly"},
+               {"id": "site.pages", "value": {"pages": []}, "provenance": "verified-directly"}])
+    assert cdn_delivery(f)[0] == "PASS"
+    f = Facts([{"id": "site.home", "value": {"cdn": "Cloudflare"}, "provenance": "verified-directly"},
+               {"id": "site.pages", "value": {"pages": [{"url": "https://x/", "internal_links": ["https://x/cdn-cgi/l/email-protection#a"], "external_links": [], "text": ""}]}, "provenance": "verified-directly"}])
+    v = cdn_delivery(f)
+    assert v[0] == "NOTE" and "Cloudflare" in v[1] and "email_off" in v[1]
+    f = Facts([{"id": "site.robots", "value": {"present": True, "ua_group_counts": {"*": 1}, "raw_groups": [{"uas": ["*"], "rules": [("disallow", "/admin/")]}]}, "provenance": "verified-directly"}])
+    assert robots_one_group_per_bot(f)[0] == "PASS"
+    f = Facts([{"id": "site.robots", "value": {"present": True, "ua_group_counts": {"*": 2},
+                "raw_groups": [{"uas": ["*"], "rules": [("disallow", "")]}, {"uas": ["*"], "rules": [("disallow", "/admin/")]}]}, "provenance": "verified-directly"}])
+    v = robots_one_group_per_bot(f)
+    assert v[0] == "NOTE" and "/admin/" in v[1]
+    live = Facts([{"id": "site.home", "value": {"status": 200, "final_url": "http://x/", "content_type": "text/html", "https": False, "redirected": False, "pre_deploy": False}, "provenance": "verified-directly"}])
+    assert home_answers(live)[0] == "FAIL"
+    build = Facts([{"id": "site.home", "value": {"status": 200, "final_url": "http://localhost:5055/", "content_type": "text/html", "https": False, "redirected": False, "pre_deploy": True}, "provenance": "verified-directly"}])
+    hv = home_answers(build)
+    assert hv[0] == "PASS" and "not applicable" in hv[1]

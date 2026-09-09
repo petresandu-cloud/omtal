@@ -53,11 +53,75 @@ def fetch(url: str, timeout: int = 30, max_bytes: int = MAX_BYTES) -> dict:
                 text = raw.decode(charset, "replace")
             except LookupError:
                 text = raw.decode("utf-8", "replace")
-            return {"url": url, "status": r.status, "final_url": r.geturl(), "content_type": ctype, "text": text, "bytes": len(raw), "error": None}
+            return {"url": url, "status": r.status, "final_url": r.geturl(), "content_type": ctype, "text": text, "bytes": len(raw), "headers": _header_subset(r.headers), "error": None}
     except urllib.error.HTTPError as e:
-        return {"url": url, "status": e.code, "final_url": url, "content_type": "", "text": "", "bytes": 0, "error": f"HTTP {e.code}"}
+        return {"url": url, "status": e.code, "final_url": url, "content_type": "", "text": "", "bytes": 0, "headers": _header_subset(getattr(e, "headers", None)), "error": f"HTTP {e.code}"}
     except Exception as e:  # noqa: BLE001
-        return {"url": url, "status": 0, "final_url": url, "content_type": "", "text": "", "bytes": 0, "error": str(e)[:200]}
+        return {"url": url, "status": 0, "final_url": url, "content_type": "", "text": "", "bytes": 0, "headers": {}, "error": str(e)[:200]}
+
+
+# The few response headers that reveal a CDN or edge in front of the origin.
+_CDN_HEADERS = ("server", "via", "cf-ray", "cf-cache-status", "x-served-by", "x-cache", "x-vercel-id", "x-nf-request-id", "x-powered-by", "x-amz-cf-id")
+
+
+def _header_subset(headers) -> dict:
+    if not headers:
+        return {}
+    out = {}
+    for k in _CDN_HEADERS:
+        v = headers.get(k)
+        if v:
+            out[k] = v
+    return out
+
+
+# Signatures that name the edge sitting in front of the origin. Header key -> substring (or "" for present-at-all) -> name.
+_CDN_SIGNS = (
+    ("cf-ray", "", "Cloudflare"),
+    ("server", "cloudflare", "Cloudflare"),
+    ("x-amz-cf-id", "", "Amazon CloudFront"),
+    ("server", "cloudfront", "Amazon CloudFront"),
+    ("x-vercel-id", "", "Vercel"),
+    ("x-nf-request-id", "", "Netlify"),
+    ("server", "netlify", "Netlify"),
+    ("x-served-by", "fastly", "Fastly"),
+    ("via", "fastly", "Fastly"),
+    ("server", "akamai", "Akamai"),
+    ("x-cache", "akamai", "Akamai"),
+)
+
+
+def detect_cdn(headers: dict) -> str | None:
+    """The name of the CDN or edge in front, from response headers, or None."""
+    if not headers:
+        return None
+    low = {k.lower(): (v or "").lower() for k, v in headers.items()}
+    for key, needle, name in _CDN_SIGNS:
+        v = low.get(key)
+        if v is None:
+            continue
+        if needle == "" or needle in v:
+            return name
+    return None
+
+
+# Rewrites a CDN performs on the delivered HTML that a crawler sees but the origin did not send.
+def cdn_artifacts(pages: list[dict]) -> list[dict]:
+    """Recognised edge rewrites found in the crawled pages: what it is, why it appears, and what to do."""
+    found = []
+    hit_email = False
+    for pg in pages:
+        links = list(pg.get("internal_links") or []) + list(pg.get("external_links") or [])
+        if not hit_email and (any("/cdn-cgi/l/email-protection" in u for u in links) or "/cdn-cgi/l/email-protection" in (pg.get("text") or "")):
+            hit_email = True
+            found.append({
+                "kind": "email-obfuscation",
+                "cdn": "Cloudflare",
+                "detail": "Cloudflare Email Address Obfuscation rewrote a plain email address into a link to /cdn-cgi/l/email-protection, which returns 404 when fetched without its script. The origin HTML has the address in plain text.",
+                "fix": "wrap the address in Cloudflare's <!--email_off--> ... <!--/email_off--> markers to keep it plain, or turn the feature off; the link is otherwise a dead end a crawler follows.",
+                "where": next((pg["url"] for pg in pages if any("/cdn-cgi/l/email-protection" in u for u in (pg.get("internal_links") or []) + (pg.get("external_links") or []))), pages[0]["url"] if pages else ""),
+            })
+    return found
 
 
 def origin(url: str) -> str:
@@ -65,12 +129,34 @@ def origin(url: str) -> str:
     return f"{p.scheme}://{p.netloc}"
 
 
+def remap_to_base(url: str, base: str) -> str:
+    """Point a URL at a different host, keeping its path and query. Used in pre-deploy mode,
+    where a local build's absolute URLs (sitemap entries, the Sitemap: line) name the
+    production host, but must be followed against the local server actually being audited."""
+    p = urllib.parse.urlsplit(url)
+    b = urllib.parse.urlsplit(base)
+    return urllib.parse.urlunsplit((b.scheme, b.netloc, p.path, p.query, p.fragment))
+
+
+def is_local_host(url: str) -> bool:
+    """A host that only exists on this machine or a private network — a build being tested, not the live site."""
+    host = urllib.parse.urlsplit(url).netloc.split(":", 1)[0].lower()
+    return host in ("localhost", "127.0.0.1", "::1", "0.0.0.0") or host.endswith(".local") or host.startswith(("192.168.", "10.", "127."))
+
+
 # ----------------------------------------------------------------- robots.txt
 
 def parse_robots(text: str) -> dict:
-    """Groups by user agent, the rules in each, and the sitemaps named. Case-insensitive, comments stripped."""
+    """Groups by user agent, the rules in each, and the sitemaps named. Case-insensitive, comments stripped.
+
+    `groups` merges every rule for a user-agent, which is how lenient crawlers read
+    the file. `raw_groups` keeps each block separately, so a caller can see when the
+    same agent is named by more than one group — which a strict crawler does not merge.
+    """
     groups: dict[str, list[tuple[str, str]]] = {}
+    raw_groups: list[dict] = []
     current: list[str] = []
+    current_raw: dict | None = None
     last_was_ua = False
     sitemaps = []
     for line in text.splitlines():
@@ -82,7 +168,10 @@ def parse_robots(text: str) -> dict:
         if k == "user-agent":
             if not last_was_ua:
                 current = []
+                current_raw = {"uas": [], "rules": []}
+                raw_groups.append(current_raw)
             current.append(v.lower())
+            current_raw["uas"].append(v.lower())
             groups.setdefault(v.lower(), [])
             last_was_ua = True
             continue
@@ -92,7 +181,13 @@ def parse_robots(text: str) -> dict:
         elif k in ("allow", "disallow"):
             for ua in current:
                 groups[ua].append((k, v))
-    return {"groups": groups, "sitemaps": sitemaps}
+            if current_raw is not None:
+                current_raw["rules"].append((k, v))
+    counts: dict[str, int] = {}
+    for grp in raw_groups:
+        for ua in set(grp["uas"]):
+            counts[ua] = counts.get(ua, 0) + 1
+    return {"groups": groups, "raw_groups": raw_groups, "ua_group_counts": counts, "sitemaps": sitemaps}
 
 
 def bot_access(robots: dict, bot: str, path: str = "/") -> str:
@@ -257,8 +352,18 @@ def self_test() -> None:
     r = parse_robots("User-agent: *\nDisallow: /private/\n\nUser-agent: GPTBot\nDisallow: /\n\nSitemap: https://x/s.xml\n")
     assert bot_access(r, "OAI-SearchBot") == "allowed" and bot_access(r, "GPTBot") == "blocked"
     assert bot_access(r, "Googlebot", "/private/x") == "limited" and r["sitemaps"] == ["https://x/s.xml"]
+    assert r["ua_group_counts"] == {"*": 1, "gptbot": 1}
+    dupe = parse_robots("User-agent: *\nDisallow:\n\nUser-agent: *\nDisallow: /admin/\n")
+    assert dupe["ua_group_counts"]["*"] == 2 and len(dupe["raw_groups"]) == 2
+    assert remap_to_base("https://pompedozare.ro/sitemap.xml", "http://localhost:5055") == "http://localhost:5055/sitemap.xml"
+    assert is_local_host("http://localhost:5055/") and not is_local_host("https://pompedozare.ro/")
     pages, kids = sitemap_urls("<sitemapindex><sitemap><loc>https://x/a.xml</loc></sitemap></sitemapindex>")
     assert kids == ["https://x/a.xml"] and pages == []
     pg = read_page('<html lang="en"><head><title>T &amp; U</title><meta name="description" content="d"><link rel="canonical" href="https://x/"><script type="application/ld+json">{"@type":"Organization","name":"X"}</script></head><body><h1>Hi</h1><p>Hello <a href="/a">A</a> <a href="https://y/b">B</a></p><script>ignored()</script></body></html>', "https://x/")
     assert pg["title"] == "T & U" and pg["jsonld_types"] == ["Organization"] and pg["h1"] == ["Hi"] and "ignored" not in pg["text"]
     assert pg["internal_links"] == ["https://x/a"] and pg["external_links"] == ["https://y/b"]
+    assert detect_cdn({"cf-ray": "abc"}) == "Cloudflare" and detect_cdn({"Server": "cloudflare"}) == "Cloudflare"
+    assert detect_cdn({"x-served-by": "cache-fra fastly"}) == "Fastly" and detect_cdn({"server": "nginx"}) is None and detect_cdn({}) is None
+    arts = cdn_artifacts([{"url": "https://x/", "internal_links": ["https://x/cdn-cgi/l/email-protection#abc"], "external_links": [], "text": ""}])
+    assert len(arts) == 1 and arts[0]["kind"] == "email-obfuscation" and arts[0]["cdn"] == "Cloudflare"
+    assert cdn_artifacts([{"url": "https://x/", "internal_links": ["https://x/a"], "external_links": [], "text": "hello"}]) == []
